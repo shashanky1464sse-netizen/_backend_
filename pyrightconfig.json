@@ -1,0 +1,8 @@
+{
+  "venvPath": "d:\\R2I\\backend",
+  "venv": "venv",
+  "extraPaths": [
+    ".",
+    "d:\\R2I\\backend\\venv\\Lib\\site-packages"
+  ]
+}

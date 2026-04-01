@@ -1,0 +1,322 @@
+
+ 
+# ── Seed data pools ───────────────────────────────────────────────────────────
+SKILLS = [
+    "Python", "JavaScript", "Java", "C++", "SQL", "React", "Node.js",
+    "Django", "FastAPI", "Docker", "Kubernetes", "AWS", "System Design",
+    "Data Structures", "Algorithms", "Machine Learning", "REST APIs",
+    "Git", "Linux", "TypeScript", "MongoDB", "PostgreSQL", "Redis",
+]
+ROLES = [
+    "Backend Developer", "Frontend Developer", "Full Stack Developer",
+    "Data Scientist", "ML Engineer", "DevOps Engineer", "Cloud Architect",
+    "Software Engineer", "Data Engineer", "Mobile Developer",
+]
+DIFFICULTIES = ["Easy", "Medium", "Hard"]
+EXPERIENCE    = [1, 2, 3, 4, 5, 6, 8, 10]
+ 
+SAMPLE_QUESTIONS = [
+    "Explain the difference between TCP and UDP.",
+    "What is a RESTful API and what are its constraints?",
+    "How does garbage collection work in Python?",
+    "What is the difference between SQL and NoSQL databases?",
+    "Explain the concept of microservices architecture.",
+    "What is Big O notation? Give examples.",
+    "How does React's virtual DOM work?",
+    "What is Docker and why is it useful?",
+    "Explain SOLID principles.",
+    "What is a deadlock and how do you prevent it?",
+    "Describe the CAP theorem.",
+    "What is the difference between supervised and unsupervised learning?",
+    "How does JWT authentication work?",
+    "Explain database indexing and its trade-offs.",
+    "What is a closure in JavaScript?",
+]
+ 
+SAMPLE_ANSWERS_GOOD = [
+    "TCP is connection-oriented and guarantees delivery through a three-way handshake, retransmission, and ordering. UDP is connectionless, faster, with no delivery guarantee — ideal for real-time use cases like video streaming or gaming.",
+    "A RESTful API uses HTTP methods (GET, POST, PUT, DELETE) to manipulate stateless resources identified by URIs. Key constraints include statelessness, uniform interface, and client-server separation.",
+    "Python uses reference counting as the primary GC mechanism, supplemented by a cyclic garbage collector to handle circular references. Objects are collected when their reference count drops to zero.",
+]
+SAMPLE_ANSWERS_WEAK = [
+    "TCP is slow and UDP is fast. You use TCP for important stuff and UDP for games.",
+    "REST API is when you use HTTP to get data from the server. It's used in web apps.",
+    "Python automatically deletes variables you don't use anymore.",
+]
+ 
+SAMPLE_RESUME_TEXTS = [
+    """John Smith
+    Software Engineer with 4 years of experience in backend development.
+    Worked at TechCorp (2020-2024) building Python/Django REST APIs.
+    Skills: Python, Django, PostgreSQL, Docker, AWS, Git
+    Education: B.Tech Computer Science, 2020""",
+ 
+    """Priya Patel
+    3 years experience as Frontend Developer at StartupXYZ.
+    Built React applications with TypeScript and Redux.
+    Also worked on Node.js microservices.
+    Looking for Senior Frontend or Full Stack roles.""",
+ 
+    """Raj Kumar — Data Scientist
+    5 years building ML pipelines at Analytics Inc.
+    Expertise: Python, Scikit-learn, TensorFlow, SQL, Spark
+    Published 2 papers on NLP. M.Tech from IIT Madras.""",
+]
+ 
+UNKNOWN_TERMS = [
+    ["FastAPI", "Pydantic", "asyncio", "pytest", "mypy"],
+    ["Webpack", "Vite", "ESLint", "Prettier", "Storybook"],
+    ["Airflow", "dbt", "Spark", "Kafka", "Flink"],
+    ["Terraform", "Ansible", "Prometheus", "Grafana", "ArgoCD"],
+    ["leadership", "teamwork", "communication", "problem-solving", "mentoring"],
+]
+ 
+ 
+# ── Formatter: convert to Alpaca-style instruction format ────────────────────
+def make_sample(instruction: str, input_text: str, output: str) -> dict:
+    return {
+        "instruction": instruction.strip(),
+        "input":       input_text.strip(),
+        "output":      output.strip(),
+    }
+ 
+ 
+# ══════════════════════════════════════════════════════════════════════════════
+#  FUNCTION 1 — evaluate_answer
+# ══════════════════════════════════════════════════════════════════════════════
+def gen_evaluate_answer(n: int) -> list:
+    samples = []
+    instruction = (
+        "You are an expert technical interviewer. Evaluate the candidate's answer "
+        "to the given interview question. Return a JSON object with keys: "
+        "score (integer 0-100), strengths (list of strings), "
+        "improvements (list of strings), suggestions (list of strings)."
+    )
+    for _ in tqdm(range(n), desc="evaluate_answer"):
+        question = random.choice(SAMPLE_QUESTIONS)
+        answer   = random.choice(SAMPLE_ANSWERS_GOOD + SAMPLE_ANSWERS_WEAK)
+        skill    = random.choice(SKILLS)
+        input_text = f"Question: {question}\nCandidate Answer: {answer}\nSkill: {skill}"
+        try:
+            raw = call(
+                f"Generate a realistic evaluation JSON for this:\n{input_text}\n"
+                "Return ONLY valid JSON with keys: score, strengths, improvements, suggestions.",
+                system="You are an expert technical interviewer. Return only valid JSON."
+            )
+            # validate JSON parseable
+            parsed = json.loads(raw.strip().strip("```json").strip("```"))
+            samples.append(make_sample(instruction, input_text, json.dumps(parsed)))
+            time.sleep(0.3)
+        except Exception as e:
+            print(f"  skip evaluate sample: {e}")
+    return samples
+ 
+ 
+# ══════════════════════════════════════════════════════════════════════════════
+#  FUNCTION 2 — generate_questions
+# ══════════════════════════════════════════════════════════════════════════════
+def gen_generate_questions(n: int) -> list:
+    samples = []
+    instruction = (
+        "You are a technical interviewer. Generate a realistic interview question plan "
+        "based on the candidate's skills and experience. Return a JSON array of objects, "
+        "each with keys: main_question, follow_up_question, category."
+    )
+    for _ in tqdm(range(n), desc="generate_questions"):
+        primary    = random.choice(SKILLS)
+        secondary  = random.choice([s for s in SKILLS if s != primary])
+        weak       = random.choice([s for s in SKILLS if s not in [primary, secondary]])
+        exp        = random.choice(EXPERIENCE)
+        difficulty = random.choice(DIFFICULTIES)
+        count      = random.randint(3, 6)
+        input_text = (
+            f"Primary skill: {primary}\nSecondary skill: {secondary}\n"
+            f"Weak skill: {weak}\nExperience: {exp} years\n"
+            f"Difficulty: {difficulty}\nNumber of questions: {count}"
+        )
+        try:
+            raw = call(
+                f"Generate {count} interview questions for this candidate profile:\n{input_text}\n"
+                "Return ONLY a valid JSON array.",
+                system="You are a technical interviewer. Return only valid JSON array."
+            )
+            parsed = json.loads(raw.strip().strip("```json").strip("```"))
+            samples.append(make_sample(instruction, input_text, json.dumps(parsed)))
+            time.sleep(0.3)
+        except Exception as e:
+            print(f"  skip gen_questions sample: {e}")
+    return samples
+ 
+ 
+# ══════════════════════════════════════════════════════════════════════════════
+#  FUNCTION 3 — generate_single_question
+# ══════════════════════════════════════════════════════════════════════════════
+def gen_single_question(n: int) -> list:
+    samples = []
+    instruction = (
+        "Generate exactly one new technical interview question different from the current one. "
+        "Return a single JSON object with keys: main_question, follow_up_question, category."
+    )
+    for _ in tqdm(range(n), desc="generate_single_question"):
+        skill           = random.choice(SKILLS)
+        current_question = random.choice(SAMPLE_QUESTIONS)
+        input_text = f"Skill: {skill}\nCurrent question (avoid repeating): {current_question}"
+        try:
+            raw = call(
+                f"Generate one replacement interview question:\n{input_text}\n"
+                "Return ONLY a valid JSON object.",
+                system="You are a technical interviewer. Return only valid JSON."
+            )
+            parsed = json.loads(raw.strip().strip("```json").strip("```"))
+            samples.append(make_sample(instruction, input_text, json.dumps(parsed)))
+            time.sleep(0.3)
+        except Exception as e:
+            print(f"  skip single_question sample: {e}")
+    return samples
+ 
+ 
+# ══════════════════════════════════════════════════════════════════════════════
+#  FUNCTION 4 — generate_interview_summary
+# ══════════════════════════════════════════════════════════════════════════════
+def gen_interview_summary(n: int) -> list:
+    samples = []
+    instruction = (
+        "You are a technical interviewer. Write a professional 5-6 line summary "
+        "of the candidate's overall interview performance. Return plain text only, "
+        "no JSON, no markdown."
+    )
+    for _ in tqdm(range(n), desc="generate_interview_summary"):
+        role   = random.choice(ROLES)
+        skills = random.sample(SKILLS, 3)
+        scores = [random.randint(40, 95) for _ in range(4)]
+        avg    = sum(scores) // len(scores)
+        input_text = (
+            f"Candidate role: {role}\n"
+            f"Skills tested: {', '.join(skills)}\n"
+            f"Scores per question: {scores}\n"
+            f"Average score: {avg}/100"
+        )
+        try:
+            summary = call(
+                f"Write a 5-6 line professional interview summary for:\n{input_text}",
+                system="You are a senior technical interviewer writing performance reports."
+            )
+            samples.append(make_sample(instruction, input_text, summary))
+            time.sleep(0.3)
+        except Exception as e:
+            print(f"  skip summary sample: {e}")
+    return samples
+ 
+ 
+# ══════════════════════════════════════════════════════════════════════════════
+#  FUNCTION 5 — extract_resume_details
+# ══════════════════════════════════════════════════════════════════════════════
+def gen_extract_resume(n: int) -> list:
+    samples = []
+    instruction = (
+        "You are an HR recruiter. Extract structured data from the resume text. "
+        "Return a JSON object with exactly two keys: "
+        "experience_years (integer) and target_role (string)."
+    )
+    for _ in tqdm(range(n), desc="extract_resume_details"):
+        resume = random.choice(SAMPLE_RESUME_TEXTS)
+        # add variation
+        extra_years = random.randint(0, 3)
+        input_text  = resume
+        try:
+            raw = call(
+                f"Extract experience_years and target_role from this resume:\n{resume}\n"
+                "Return ONLY valid JSON: {{\"experience_years\": int, \"target_role\": \"string\"}}",
+                system="You are an HR recruiter. Return only valid JSON."
+            )
+            parsed = json.loads(raw.strip().strip("```json").strip("```"))
+            samples.append(make_sample(instruction, input_text, json.dumps(parsed)))
+            time.sleep(0.3)
+        except Exception as e:
+            print(f"  skip resume sample: {e}")
+    return samples
+ 
+ 
+# ══════════════════════════════════════════════════════════════════════════════
+#  FUNCTION 6 — ai_classify_unknown_skills
+# ══════════════════════════════════════════════════════════════════════════════
+def gen_classify_skills(n: int) -> list:
+    samples = []
+    instruction = (
+        "Classify the given list of unknown terms from a resume into categories. "
+        "Return a JSON object with keys: technical_skills, tools_frameworks, soft_skills "
+        "(each is a list of strings). Only include terms in the most appropriate category."
+    )
+    for _ in tqdm(range(n), desc="ai_classify_unknown_skills"):
+        terms      = random.choice(UNKNOWN_TERMS)
+        extra      = random.sample(SKILLS, 2)
+        all_terms  = terms + extra
+        random.shuffle(all_terms)
+        input_text = f"Unknown terms: {json.dumps(all_terms)}"
+        try:
+            raw = call(
+                f"Classify these resume terms:\n{input_text}\n"
+                "Return ONLY valid JSON with keys: technical_skills, tools_frameworks, soft_skills.",
+                system="You are a resume parser. Return only valid JSON."
+            )
+            parsed = json.loads(raw.strip().strip("```json").strip("```"))
+            samples.append(make_sample(instruction, input_text, json.dumps(parsed)))
+            time.sleep(0.3)
+        except Exception as e:
+            print(f"  skip classify sample: {e}")
+    return samples
+ 
+ 
+# ══════════════════════════════════════════════════════════════════════════════
+#  FUNCTION 7 — validate_job_role / validate_skills
+# ══════════════════════════════════════════════════════════════════════════════
+VALID_INPUTS   = ROLES + SKILLS
+INVALID_INPUTS = [
+    "asdfghjkl", "xyz123abc", "blahblah", "qwerty", "random stuff",
+    "!!@@##", "hello world test", "aaaaaa", "123456", "notajob",
+    "faketerm999", "gibberish input", "xyzzy", "lorum ipsum",
+]
+ 
+def gen_validate(n: int) -> list:
+    samples = []
+    instruction = (
+        "Determine if the given input is a valid professional job role or technical skill. "
+        "Reply with only True or False."
+    )
+    for _ in tqdm(range(n), desc="validate_job_role/skills"):
+        is_valid   = random.random() > 0.4
+        input_val  = random.choice(VALID_INPUTS if is_valid else INVALID_INPUTS)
+        input_text = f"Input: {input_val}"
+        output     = "True" if is_valid else "False"
+        samples.append(make_sample(instruction, input_text, output))
+    # no API call needed — rule-based is fine for validation training data
+    return samples
+ 
+ 
+# ── Main ──────────────────────────────────────────────────────────────────────
+def main():
+    all_samples = []
+ 
+    print("\n🔄 Generating training data for all 7 functions...\n")
+ 
+    all_samples += gen_evaluate_answer(SAMPLES_EACH)
+    all_samples += gen_generate_questions(SAMPLES_EACH)
+    all_samples += gen_single_question(SAMPLES_EACH)
+    all_samples += gen_interview_summary(SAMPLES_EACH)
+    all_samples += gen_extract_resume(SAMPLES_EACH)
+    all_samples += gen_classify_skills(SAMPLES_EACH)
+    all_samples += gen_validate(SAMPLES_EACH)   # rule-based, no API
+ 
+    random.shuffle(all_samples)
+ 
+    with open(OUTPUT_FILE, "w") as f:
+        for sample in all_samples:
+            f.write(json.dumps(sample) + "\n")
+ 
+    print(f"\n✅ Done! Saved {len(all_samples)} samples to {OUTPUT_FILE}")
+    print(f"   Breakdown: ~{SAMPLES_EACH} samples × 7 functions")
+    print(f"\n→ Next: Upload {OUTPUT_FILE} to Google Colab and run step2_finetune.ipynb")
+ 
+ 
+if __name__ == "__main__":
+    main()
