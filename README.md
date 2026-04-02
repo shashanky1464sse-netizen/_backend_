@@ -1,4 +1,4 @@
-# Resume2Interview — FastAPI Backend
+# Resume2Interview
 
 A modular, production-ready FastAPI backend for the **Resume2Interview** Android app.
 
@@ -9,8 +9,8 @@ A modular, production-ready FastAPI backend for the **Resume2Interview** Android
 ```
 backend/
 ├── app/
-│   ├── main.py            # FastAPI app factory, CORS, startup
-│   ├── database.py        # SQLite engine, session, Base, get_db()
+│   ├── main.py            
+│   ├── database.py        session, Base, get_db()
 │   ├── core/
 │   │   └── config.py      # Pydantic settings loaded from .env
 │   ├── models/            # SQLAlchemy ORM models (add yours here)
