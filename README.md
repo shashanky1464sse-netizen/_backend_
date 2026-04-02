@@ -93,6 +93,6 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 | `APP_NAME` | `Resume2Interview API` | API title shown in Swagger |
 | `APP_VERSION` | `1.0.0` | API version |
 | `DEBUG` | `True` | Enables SQL echo and debug mode |
-| `DATABASE_URL` | `sqlite:///./resume2interview.db` | SQLAlchemy DB URL |
+| `DATABASE_URL` |  | SQLAlchemy DB URL |
 | `ALLOWED_ORIGINS` | `http://localhost,http://10.0.2.2` | Comma-separated CORS origins |
 | `SECRET_KEY` | *(change this!)* | Used for token signing |
