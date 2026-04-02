@@ -212,18 +212,37 @@ def evaluate_answer(question: str, answer: str, category: str, role: str | None 
             ]
         }
 
+    # ── Gibberish / too-short answer detection ────────────────────────────────
+    # Count real alphabetic words (length >= 2) — random strings, numbers, and
+    # single chars don't count as meaningful content.
+    import re
+    real_words = re.findall(r'[a-zA-Z]{2,}', answer)
+    total_words = answer.strip().split()
+    is_gibberish = len(real_words) < 4 or len(total_words) < 4
+
+    if is_gibberish:
+        return {
+            "score": 0,
+            "strengths": [],
+            "improvements": [
+                "The answer does not appear to be a genuine response to the question.",
+                "Random text, numbers, or very short inputs cannot be evaluated."
+            ],
+            "suggestions": [
+                f"Please provide a real, thoughtful answer about {category}.",
+                "Even a short but genuine answer will be evaluated fairly."
+            ]
+        }
+
     fallback_response = {
-        "score": min(100, max(0, len(answer) // 2)),
-        "strengths": [
-            f"Addressed the core concept of the {category} question.",
-            "Provided a structured response."
-        ],
+        "score": 0,
+        "strengths": [],
         "improvements": [
-            "Consider adding more real-world examples.",
-            "Expand on edge cases related to the topic."
+            "Unable to evaluate the answer at this time.",
+            "Please try again."
         ],
         "suggestions": [
-            "Review further documentation to improve confidence."
+            f"Review your knowledge of {category} and try again."
         ]
     }
 
@@ -237,10 +256,16 @@ def evaluate_answer(question: str, answer: str, category: str, role: str | None 
     ) if role else " Provide general technical feedback."
 
     prompt = (
-        f"You are an expert technical interviewer evaluating a candidate's answer.\n"
-        f"Evaluate the following answer to the given question in category '{category}'.{role_context}\n"
-        f"Provide a score from 0–100, a list of strengths, a list of improvements, "
-        f"and a list of actionable suggestions tailored to their role.\n"
+        f"You are a strict expert technical interviewer evaluating a candidate's answer.\n"
+        f"Evaluate the following answer to the given question in category '{category}'.{role_context}\n\n"
+        f"IMPORTANT RULES:\n"
+        f"- If the answer is random text, gibberish, numbers, or clearly not an attempt to answer, "
+        f"give score 0, empty strengths [], and honest improvements.\n"
+        f"- Do NOT invent or hallucinate strengths. Only list genuine strengths that are ACTUALLY present in the answer.\n"
+        f"- If there are no real strengths, return an empty array for strengths: []\n"
+        f"- Be honest and strict — do not give credit for nonsense.\n\n"
+        f"Provide a score from 0–100, a list of genuine strengths (empty [] if none), "
+        f"a list of improvements, and a list of actionable suggestions.\n"
         f"Return ONLY a valid JSON object — NO markdown, NO extra text:\n"
         f'{{"score": integer, "strengths": ["string"], "improvements": ["string"], "suggestions": ["string"]}}\n\n'
         f"Question: {question}\n\nCandidate Answer: {answer}"
@@ -251,9 +276,9 @@ def evaluate_answer(question: str, answer: str, category: str, role: str | None 
         result = cast(dict[str, Any], json.loads(_clean_json(raw)))
         return {
             "score": max(0, min(100, int(result.get("score", 0)))),
-            "strengths": result.get("strengths", []) or ["Good effort."],
-            "improvements": result.get("improvements", []) or ["Detail edge cases."],
-            "suggestions": result.get("suggestions", []) or ["Practice more."]
+            "strengths": result.get("strengths", []) or [],
+            "improvements": result.get("improvements", []) or ["Consider providing a more detailed answer."],
+            "suggestions": result.get("suggestions", []) or [f"Study {category} concepts and try again."]
         }
     except Exception as e:
         logger.error(f"LLM evaluation failed: {e}")
