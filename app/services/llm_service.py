@@ -24,6 +24,10 @@ GROQ_MODEL = "llama-3.3-70b-versatile"
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct"
 
+# ── Cerebras config ────────────────────────────────────────────────────────────
+CEREBRAS_BASE_URL = "https://api.cerebras.ai/v1"
+CEREBRAS_MODEL = "llama3.1-70b"
+
 # Request timeouts (connect_timeout, read_timeout) in seconds
 # Without these, a slow/hung provider blocks the entire fallback chain
 _CONNECT_TIMEOUT = 10.0   # time to establish TCP connection
@@ -37,10 +41,7 @@ def _get_nvidia_client(api_key: str) -> OpenAI:
 # ── Core request helpers ───────────────────────────────────────────────────────
 
 def _nvidia_chat(prompt: str, max_tokens: int = 1024) -> str:
-    """
-    Try each NVIDIA key in order. Rotates on RateLimitError or AuthenticationError.
-    Returns the response text, or raises if all keys are exhausted.
-    """
+    
     keys = settings.nvidia_api_keys
     if not keys:
         raise RuntimeError("No NVIDIA_API_KEYS configured")
@@ -71,6 +72,12 @@ def _nvidia_chat(prompt: str, max_tokens: int = 1024) -> str:
     raise last_error
 
 
+def _get_cerebras_client() -> OpenAI:
+    if not settings.cerebras_api_key:
+        raise RuntimeError("CEREBRAS_API_KEY not set")
+    return OpenAI(base_url=CEREBRAS_BASE_URL, api_key=settings.cerebras_api_key, http_client=_HTTP_CLIENT, max_retries=0)
+
+
 def _get_groq_client() -> OpenAI:
     if not settings.groq_api_key:
         raise RuntimeError("GROQ_API_KEY not set")
@@ -81,6 +88,19 @@ def _get_openrouter_client() -> OpenAI:
     if not settings.openrouter_api_key:
         raise RuntimeError("OPENROUTER_API_KEY not set")
     return OpenAI(base_url=OPENROUTER_BASE_URL, api_key=settings.openrouter_api_key, http_client=_HTTP_CLIENT, max_retries=0)
+
+
+def _cerebras_chat(prompt: str, max_tokens: int = 1024) -> str:
+    client = _get_cerebras_client()
+    resp = client.chat.completions.create(
+        model=CEREBRAS_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=max_tokens,
+        temperature=0.7,
+    )
+    text = (resp.choices[0].message.content or "").strip()
+    logger.debug("Cerebras key succeeded.")
+    return text
 
 
 def _groq_chat(prompt: str, max_tokens: int = 1024) -> str:
@@ -116,23 +136,30 @@ def _openrouter_chat(prompt: str, max_tokens: int = 1024) -> str:
 
 def _call_llm(prompt: str, max_tokens: int = 1024) -> str:
     """
-    Unified entry point: NVIDIA NIM → OpenRouter → Groq → raises RuntimeError.
+    Unified entry point: NVIDIA NIM → Cerebras → OpenRouter → Groq → raises RuntimeError.
     """
     # 1. Try NVIDIA
     if settings.nvidia_api_keys:
         try:
             return _nvidia_chat(prompt, max_tokens=max_tokens)
         except Exception as e:
-            logger.error(f"All NVIDIA keys failed: {e}. Falling back to OpenRouter.")
+            logger.error(f"All NVIDIA keys failed: {e}. Falling back to Cerebras.")
 
-    # 2. Try OpenRouter
+    # 2. Try Cerebras
+    if settings.cerebras_api_key:
+        try:
+            return _cerebras_chat(prompt, max_tokens=max_tokens)
+        except Exception as e:
+            logger.error(f"Cerebras failed: {e}. Falling back to OpenRouter.")
+
+    # 3. Try OpenRouter
     if settings.openrouter_api_key:
         try:
             return _openrouter_chat(prompt, max_tokens=max_tokens)
         except Exception as e:
             logger.error(f"OpenRouter failed: {e}. Falling back to Groq.")
 
-    # 3. Try Groq
+    # 4. Try Groq
     if settings.groq_api_key:
         try:
             return _groq_chat(prompt, max_tokens=max_tokens)
@@ -176,7 +203,7 @@ def evaluate_answer(question: str, answer: str, category: str, role: str | None 
         ]
     }
 
-    if not settings.nvidia_api_keys and not settings.openrouter_api_key and not settings.groq_api_key:
+    if not settings.nvidia_api_keys and not settings.cerebras_api_key and not settings.openrouter_api_key and not settings.groq_api_key:
         logger.warning("No LLM provider available. Using fallback scoring.")
         return fallback_response
 
@@ -345,7 +372,7 @@ def ai_classify_unknown_skills(candidates: list, resume_snippet: str = "") -> di
 
     empty: dict = {"technical_skills": [], "tools_frameworks": [], "soft_skills": []}
 
-    if not settings.nvidia_api_keys and not settings.openrouter_api_key and not settings.groq_api_key:
+    if not settings.nvidia_api_keys and not settings.cerebras_api_key and not settings.openrouter_api_key and not settings.groq_api_key:
         logger.warning("[AI Classify] No LLM provider available — skipping fallback classification.")
         return empty
 

@@ -17,6 +17,7 @@ class Settings:
         self.jwt_secret_key = os.getenv("JWT_SECRET_KEY", "jwt-changeme-secret-key")
         self.groq_api_key = os.getenv("GROQ_API_KEY", "")
         self.openrouter_api_key = os.getenv("OPENROUTER_API_KEY", "")
+        self.cerebras_api_key = os.getenv("CEREBRAS_API_KEY", "")
         raw_nvidia = os.getenv("NVIDIA_API_KEYS", "")
         self.nvidia_api_keys: list[str] = [
             k.strip() for k in raw_nvidia.split(",") if k.strip()
