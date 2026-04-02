@@ -197,6 +197,21 @@ def evaluate_answer(question: str, answer: str, category: str, role: str | None 
     """
     Evaluates an interview answer using NVIDIA NIM → OpenRouter → Groq → deterministic fallback.
     """
+    # ── Early return for empty/blank answers ──────────────────────────────────
+    if not answer or not answer.strip():
+        return {
+            "score": 0,
+            "strengths": [],
+            "improvements": [
+                "No answer was provided for this question.",
+                "Make sure to attempt every question, even if unsure."
+            ],
+            "suggestions": [
+                "Try to answer every question — partial answers are scored more fairly than no answer.",
+                f"Review your knowledge of {category} and attempt a response next time."
+            ]
+        }
+
     fallback_response = {
         "score": min(100, max(0, len(answer) // 2)),
         "strengths": [
