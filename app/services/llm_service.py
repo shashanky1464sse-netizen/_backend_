@@ -12,19 +12,19 @@ from app.core.config import get_settings  # pyre-ignore
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-# ── NVIDIA NIM config ──────────────────────────────────────────────────────────
+
 NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
 NVIDIA_MODEL = "meta/llama-3.3-70b-instruct"
 
-# ── Groq config ────────────────────────────────────────────────────────────────
+
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 GROQ_MODEL = "llama-3.3-70b-versatile"
 
-# ── OpenRouter config ─────────────────────────────────────────────────────────
+
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct"
 
-# ── Cerebras config ────────────────────────────────────────────────────────────
+
 CEREBRAS_BASE_URL = "https://api.cerebras.ai/v1"
 CEREBRAS_MODEL = "llama3.1-70b"
 
