@@ -26,7 +26,7 @@ OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct"
 
 
 CEREBRAS_BASE_URL = "https://api.cerebras.ai/v1"
-CEREBRAS_MODEL = "llama3.1-70b"
+CEREBRAS_MODEL = "llama3.1-8b"
 
 # Request timeouts (connect_timeout, read_timeout) in seconds
 # Without these, a slow/hung provider blocks the entire fallback chain
