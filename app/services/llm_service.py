@@ -35,8 +35,17 @@ _READ_TIMEOUT    = 45.0   # time to wait for the full streaming response
 import httpx
 _HTTP_CLIENT = httpx.Client(timeout=httpx.Timeout(_READ_TIMEOUT, connect=_CONNECT_TIMEOUT))
 
+# NVIDIA gets a much tighter read timeout — if it doesn't respond in 5s,
+# we fall through to the next (faster) provider automatically.
+_NVIDIA_READ_TIMEOUT = 5.0
+_NVIDIA_HTTP_CLIENT = httpx.Client(
+    timeout=httpx.Timeout(_NVIDIA_READ_TIMEOUT, connect=_CONNECT_TIMEOUT)
+)
+
 def _get_nvidia_client(api_key: str) -> OpenAI:
-    return OpenAI(base_url=NVIDIA_BASE_URL, api_key=api_key, http_client=_HTTP_CLIENT, max_retries=0)
+    # Uses _NVIDIA_HTTP_CLIENT with a 5s read timeout so slow responses
+    # automatically fall through to the next provider in _call_llm().
+    return OpenAI(base_url=NVIDIA_BASE_URL, api_key=api_key, http_client=_NVIDIA_HTTP_CLIENT, max_retries=0)
 
 # ── Core request helpers ───────────────────────────────────────────────────────
 
